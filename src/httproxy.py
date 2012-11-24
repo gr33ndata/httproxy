@@ -230,11 +230,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         )
 
     def log_message(self, fmt, *args):
-        igx = self.ignored_extensions
+        x10sions = self.ignored_extensions
         url = args[0].split(' ')[1].strip()
-        for x10sion in igx:
+        for x10sion in x10sions:
             if url.find(x10sion) != -1:
-				print "Found %s, we will skip logging this request" % x10sion
 				return
         self.server.logger.log(
             logging.INFO, "%s %s", self.address_string(), fmt % args
@@ -424,6 +423,7 @@ def handle_configuration():
             clients.append(client[2:])
         iniconf['<allowed-client>'] = clients
 	# We need a way to limit logging certain sites only
+    # This is not implemented yet anyway
 	allowed_sites = []
     if inifile.has_section('allowed-sites'):
         for sites in inifile['allowed-sites']:
@@ -473,9 +473,8 @@ def main():
         ProxyHandler.allowed_clients = allowed
     else:
         logger.log(logging.INFO, "Any clients will be served...")
-	print type(args), dir(args)
-    if args.has_key('<ignored_extensions>'):
-        ProxyHandler.ignored_extensions = args['<ignored_extensions>']
+    for config_arg in args:
+        ProxyHandler.ignored_extensions = args['<ignored_extensions>'] if config_arg == '<ignored_extensions>' else []
     ProxyHandler.verbose = args['--verbose']
     try:
         handle_pidfile(args['--pidfile'], logger)
