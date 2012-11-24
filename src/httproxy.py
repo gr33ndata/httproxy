@@ -79,6 +79,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
     verbose = False
     cache = False
 
+    allowed_sites = []
+    ignored_extensions = []
+
     def handle(self):
         ip, port = self.client_address
         self.server.logger.log(logging.DEBUG, "Request from '%s'", ip)
@@ -227,6 +230,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
         )
 
     def log_message(self, fmt, *args):
+        igx = self.ignored_extensions
+        url = args[0].split(' ')[1].strip()
+        for x10sion in igx:
+            if url.find(x10sion) != -1:
+				print "Found %s, we will skip logging this request" % x10sion
+				return
         self.server.logger.log(
             logging.INFO, "%s %s", self.address_string(), fmt % args
         )
@@ -414,6 +423,18 @@ def handle_configuration():
         for client in inifile['allowed-clients']:
             clients.append(client[2:])
         iniconf['<allowed-client>'] = clients
+	# We need a way to limit logging certain sites only
+	allowed_sites = []
+    if inifile.has_section('allowed-sites'):
+        for sites in inifile['allowed-sites']:
+            allowed_sites.append(sites[2:])
+        iniconf['<allowed-sites>'] = allowed_sites
+    # We need way to ignore logging urls with certain extensions
+    ignored_extensions = []
+    if inifile.has_section('ignored-extensions'):
+        for extension in inifile['ignored-extensions']:
+            ignored_extensions.append(extension[2:])
+        iniconf['<ignored_extensions>'] = ignored_extensions
     return read_from, iniconf
 
 
@@ -422,7 +443,7 @@ def main():
     run_event = threading.Event()
     read_from, args = handle_configuration()
     logger = setup_logging(
-        args['--logfile'], max_log_size, args['--daemon'], args['--verbose'],
+        args['--logfile'], max_log_size, args['--daemon'], args['--verbose']
     )
     for path in read_from:
         logger.log(logging.DEBUG, 'Read configuration from `%s`.' % path)
@@ -452,6 +473,9 @@ def main():
         ProxyHandler.allowed_clients = allowed
     else:
         logger.log(logging.INFO, "Any clients will be served...")
+	print type(args), dir(args)
+    if args.has_key('<ignored_extensions>'):
+        ProxyHandler.ignored_extensions = args['<ignored_extensions>']
     ProxyHandler.verbose = args['--verbose']
     try:
         handle_pidfile(args['--pidfile'], logger)
